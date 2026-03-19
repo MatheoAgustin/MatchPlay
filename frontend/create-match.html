@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crear partido — MatchPlay</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .create-layout { display: grid; grid-template-columns: 1fr 380px; gap: 28px; align-items: start; }
+    @media(max-width:900px) { .create-layout { grid-template-columns: 1fr; } }
+    #search-results { position:absolute; top:100%; left:0; right:0; z-index:1000; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); margin-top:4px; overflow:hidden; }
+    .search-result-item { padding:10px 14px; cursor:pointer; font-size:14px; transition:background 0.1s; }
+    .search-result-item:hover { background:var(--card2); }
+    .location-input-wrap { position:relative; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand">⚽ MATCH<span>PLAY</span></a>
+    <div id="navbar-links" class="navbar-links"></div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div id="navbar-avatar"></div>
+      <button class="navbar-mobile-toggle" id="mobile-toggle">☰</button>
+    </div>
+  </nav>
+
+  <div class="container" style="padding-top:40px;padding-bottom:60px;">
+    <div class="page-header">
+      <h1 class="page-title">Crear <em>partido</em></h1>
+      <p class="text-muted">Organizá tu partido y encontrá jugadores</p>
+    </div>
+
+    <div class="create-layout">
+      <!-- FORM -->
+      <div style="display:grid;gap:20px;">
+        <div class="card">
+          <h3 class="font-display" style="font-size:22px;margin-bottom:20px;">Información básica</h3>
+          <div style="display:grid;gap:14px;">
+            <div class="form-group">
+              <label class="form-label">Nombre del partido *</label>
+              <input type="text" id="title" class="form-input" placeholder="Ej: Picado los domingos, Fútbol 5 casual..." maxlength="80">
+            </div>
+            <div class="grid-2" style="gap:12px;">
+              <div class="form-group">
+                <label class="form-label">Fecha y hora *</label>
+                <input type="datetime-local" id="date" class="form-input">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Formato *</label>
+                <select id="format" class="form-select">
+                  <option value="5v5">5v5 (10 jugadores)</option>
+                  <option value="7v7">7v7 (14 jugadores)</option>
+                  <option value="11v11">11v11 (22 jugadores)</option>
+                  <option value="Libre">Libre</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid-2" style="gap:12px;">
+              <div class="form-group">
+                <label class="form-label">Total de jugadores *</label>
+                <input type="number" id="totalPlayers" class="form-input" value="10" min="4" max="22">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Nivel requerido</label>
+                <select id="level" class="form-select">
+                  <option value="Todos">Todos los niveles</option>
+                  <option value="Amateur">Amateur</option>
+                  <option value="Intermedio">Intermedio</option>
+                  <option value="Competitivo">Competitivo</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Costo por persona ($)</label>
+              <input type="number" id="costPerPerson" class="form-input" value="0" min="0" placeholder="0 = gratis">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Descripción</label>
+              <textarea id="description" class="form-textarea" placeholder="Info adicional sobre el partido, reglas, punto de encuentro..." maxlength="500"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="font-display" style="font-size:22px;margin-bottom:4px;">Posiciones necesarias</h3>
+          <p class="text-muted text-sm mb-16">Seleccioná qué jugadores buscás</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;" id="positions-toggle">
+            <button class="btn btn-ghost btn-sm pos-btn" data-pos="Arquero">🧤 Arquero</button>
+            <button class="btn btn-ghost btn-sm pos-btn" data-pos="Defensor">🛡️ Defensor</button>
+            <button class="btn btn-ghost btn-sm pos-btn" data-pos="Mediocampista">⚙️ Mediocampista</button>
+            <button class="btn btn-ghost btn-sm pos-btn" data-pos="Delantero">⚽ Delantero</button>
+            <button class="btn btn-ghost btn-sm pos-btn" data-pos="Indiferente">🔄 Indiferente</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="font-display" style="font-size:22px;margin-bottom:4px;">Ubicación de la cancha *</h3>
+          <p class="text-muted text-sm mb-16">Buscá la cancha o hacé clic en el mapa</p>
+          <div class="form-group mb-16">
+            <label class="form-label">Buscar dirección</label>
+            <div class="location-input-wrap">
+              <input type="text" id="location-search" class="form-input" placeholder="Ej: Av. Corrientes 1234, Buenos Aires">
+              <div id="search-results"></div>
+            </div>
+          </div>
+          <div class="form-group mb-16">
+            <label class="form-label">Nombre de la cancha *</label>
+            <input type="text" id="location-name" class="form-input" placeholder="Ej: Complejo Deportivo El Parque">
+          </div>
+          <div id="map" style="height:300px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border);"></div>
+          <p class="form-hint mt-8" id="coords-display">📍 Hacé clic en el mapa para seleccionar la ubicación exacta</p>
+        </div>
+
+        <p id="error-msg" class="form-error hidden"></p>
+        <button class="btn btn-primary btn-full" id="create-btn" style="font-size:17px;padding:16px;">⚽ Publicar partido</button>
+      </div>
+
+      <!-- PREVIEW -->
+      <div style="position:sticky;top:80px;">
+        <div class="card">
+          <h3 class="font-display" style="font-size:20px;margin-bottom:16px;color:var(--text-muted);">Vista previa</h3>
+          <div id="preview-card">
+            <div class="text-muted text-sm" style="text-align:center;padding:20px;">Completá el formulario para ver la vista previa</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    if (!api.isLoggedIn()) window.location.href = 'login.html';
+
+    // Map init
+    const map = L.map('map').setView([-34.6, -58.4], 13);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+    let marker = null, selectedLat = null, selectedLng = null;
+
+    function setMarker(lat, lng) {
+      selectedLat = lat; selectedLng = lng;
+      if (marker) map.removeLayer(marker);
+      marker = L.marker([lat, lng]).addTo(map);
+      document.getElementById('coords-display').textContent = `📍 Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`;
+      updatePreview();
+    }
+
+    map.on('click', (e) => setMarker(e.latlng.lat, e.latlng.lng));
+
+    // Geocoding con Nominatim
+    let searchTimeout;
+    document.getElementById('location-search').addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      const q = e.target.value.trim();
+      if (q.length < 4) { document.getElementById('search-results').innerHTML = ''; return; }
+      searchTimeout = setTimeout(async () => {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&addressdetails=1`);
+        const data = await res.json();
+        const el = document.getElementById('search-results');
+        if (!data.length) { el.innerHTML = ''; return; }
+        el.innerHTML = data.map(r => `
+          <div class="search-result-item" onclick="selectLocation(${r.lat},${r.lon},'${r.display_name.replace(/'/g,"\\'")}')">
+            📍 ${r.display_name}
+          </div>`).join('');
+      }, 400);
+    });
+
+    function selectLocation(lat, lng, name) {
+      document.getElementById('location-search').value = name;
+      document.getElementById('search-results').innerHTML = '';
+      if (!document.getElementById('location-name').value) {
+        document.getElementById('location-name').value = name.split(',')[0];
+      }
+      map.setView([lat, lng], 15);
+      setMarker(parseFloat(lat), parseFloat(lng));
+    }
+
+    // Positions
+    const selectedPositions = new Set();
+    document.querySelectorAll('.pos-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pos = btn.dataset.pos;
+        if (selectedPositions.has(pos)) { selectedPositions.delete(pos); btn.classList.remove('btn-primary'); btn.classList.add('btn-ghost'); }
+        else { selectedPositions.add(pos); btn.classList.remove('btn-ghost'); btn.classList.add('btn-primary'); }
+      });
+    });
+
+    // Format -> auto fill totalPlayers
+    document.getElementById('format').addEventListener('change', (e) => {
+      const map = { '5v5': 10, '7v7': 14, '11v11': 22, 'Libre': 10 };
+      document.getElementById('totalPlayers').value = map[e.target.value] || 10;
+      updatePreview();
+    });
+
+    // Live preview
+    ['title','date','format','level','totalPlayers','costPerPerson','location-name'].forEach(id => {
+      document.getElementById(id)?.addEventListener('input', updatePreview);
+      document.getElementById(id)?.addEventListener('change', updatePreview);
+    });
+
+    function updatePreview() {
+      const title = document.getElementById('title').value || 'Nombre del partido';
+      const date = document.getElementById('date').value;
+      const format = document.getElementById('format').value;
+      const level = document.getElementById('level').value;
+      const total = document.getElementById('totalPlayers').value;
+      const cost = document.getElementById('costPerPerson').value;
+      const locName = document.getElementById('location-name').value || 'Cancha sin definir';
+      const user = api.getUser();
+      document.getElementById('preview-card').innerHTML = `
+        <div class="match-card" style="pointer-events:none;">
+          <div class="match-card-header">
+            <div>
+              <div class="match-card-title">${title}</div>
+              <div style="display:flex;gap:6px;margin-top:6px;">${levelBadge(level)}<span class="badge" style="background:rgba(255,255,255,0.06);color:var(--text-muted);">${format}</span></div>
+            </div>
+            <span class="badge badge-open">Abierto</span>
+          </div>
+          <div class="match-card-body">
+            ${date ? `<div class="match-card-row">📅 ${formatDate(date)}</div>` : ''}
+            <div class="match-card-row">📍 ${locName}</div>
+            <div class="match-card-row">${avatarHtml(user?.avatar, user?.name || 'Vos', 22)} <span class="text-sm">${user?.name || 'Vos'}</span></div>
+            <div class="match-progress">
+              <div class="flex-between text-xs text-muted mb-8"><span>Jugadores</span><span>1/${total}</span></div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${(1/total)*100}%"></div></div>
+            </div>
+            ${cost > 0 ? `<div class="match-card-row text-sm">💰 $${cost} por persona</div>` : '<div class="match-card-row text-accent text-sm">✅ Gratis</div>'}
+          </div>
+        </div>`;
+    }
+
+    // Submit
+    document.getElementById('create-btn').addEventListener('click', async () => {
+      const title = document.getElementById('title').value.trim();
+      const date = document.getElementById('date').value;
+      const format = document.getElementById('format').value;
+      const totalPlayers = parseInt(document.getElementById('totalPlayers').value);
+      const level = document.getElementById('level').value;
+      const costPerPerson = parseFloat(document.getElementById('costPerPerson').value) || 0;
+      const description = document.getElementById('description').value.trim();
+      const locationName = document.getElementById('location-name').value.trim();
+      const locationAddress = document.getElementById('location-search').value.trim();
+      const errEl = document.getElementById('error-msg');
+      const btn = document.getElementById('create-btn');
+      errEl.classList.add('hidden');
+
+      if (!title) { errEl.textContent = 'El nombre del partido es requerido.'; errEl.classList.remove('hidden'); return; }
+      if (!date) { errEl.textContent = 'La fecha es requerida.'; errEl.classList.remove('hidden'); return; }
+      if (!selectedLat || !selectedLng) { errEl.textContent = 'Seleccioná la ubicación en el mapa.'; errEl.classList.remove('hidden'); return; }
+      if (!locationName) { errEl.textContent = 'El nombre de la cancha es requerido.'; errEl.classList.remove('hidden'); return; }
+
+      btn.disabled = true; btn.textContent = 'Publicando...';
+      const res = await api.createMatch({
+        title, date, format, totalPlayers, level, costPerPerson, description,
+        location: { name: locationName, address: locationAddress || locationName, lat: selectedLat, lng: selectedLng },
+        neededPositions: [...selectedPositions]
+      });
+      btn.disabled = false; btn.textContent = '⚽ Publicar partido';
+
+      if (res.success) {
+        toast.success('¡Partido creado!');
+        setTimeout(() => window.location.href = `match-detail.html?id=${res.match._id}`, 1200);
+      } else {
+        const msg = res.errors?.[0]?.msg || res.message || 'Error al crear partido.';
+        errEl.textContent = msg; errEl.classList.remove('hidden');
+      }
+    });
+
+    updatePreview();
+  </script>
+</body>
+</html>

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Perfil — MatchPlay</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="shortcut icon" href="/frontend/img/icon.png" type="image/x-icon">
+  <style>
+    .rating-bar-row { display:grid; grid-template-columns:110px 1fr 36px; align-items:center; gap:10px; font-size:13px; }
+    .rating-bar-bg  { height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+    .rating-bar-fill{ height:100%; background:var(--accent); border-radius:3px; }
+
+    /* Avatar upload */
+    .avatar-upload-wrap { position:relative; width:fit-content; cursor:pointer; }
+    .avatar-upload-wrap:hover .avatar-overlay { opacity:1; }
+    .avatar-overlay {
+      position:absolute; inset:0; border-radius:50%;
+      background:rgba(0,0,0,0.55);
+      display:flex; align-items:center; justify-content:center;
+      opacity:0; transition:opacity .2s;
+      font-size:22px; color:#fff;
+    }
+    #avatar-file-input { display:none; }
+
+    /* Edit form sections */
+    .edit-section-title {
+      font-family:var(--font-display); font-size:16px; font-weight:700;
+      color:var(--text-muted); text-transform:uppercase; letter-spacing:1px;
+      margin-bottom:12px; margin-top:4px;
+      padding-bottom:8px; border-bottom:1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <a href="index.html" class="navbar-brand">⚽ MATCH<em>PLAY</em></a>
+  <div id="navbar-links" class="navbar-links"></div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div id="navbar-avatar"></div>
+    <button class="navbar-mobile-toggle" id="mobile-toggle">☰</button>
+  </div>
+</nav>
+
+  <!-- MODAL EDITAR PERFIL -->
+  <div id="edit-modal" class="modal-overlay hidden">
+    <div class="modal" style="max-width:560px;">
+      <div class="modal-header">
+        <span>Editar perfil</span>
+        <button class="modal-close" onclick="closeEditModal()">✕</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- FOTO -->
+        <div class="edit-section-title">Foto de perfil</div>
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;">
+          <div class="avatar-upload-wrap" onclick="document.getElementById('avatar-file-input').click()">
+            <div id="avatar-preview-wrap"></div>
+            <div class="avatar-overlay">📷</div>
+          </div>
+          <div>
+            <p class="text-sm text-muted">Hacé click en la foto para cambiarla</p>
+            <p class="text-xs text-muted" style="margin-top:4px;">JPG, PNG o WebP · Máx. 2MB</p>
+          </div>
+          <input type="file" id="avatar-file-input" accept="image/*" onchange="previewAvatar(event)">
+        </div>
+
+        <!-- INFO PERSONAL -->
+        <div class="edit-section-title" style="margin-top:20px;">Información personal</div>
+        <div style="display:grid;gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Nombre completo</label>
+            <input type="text" id="edit-name" class="form-input" maxlength="50" placeholder="Tu nombre">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bio <span style="color:var(--text-dim);font-size:10px;">(opcional)</span></label>
+            <textarea id="edit-bio" class="form-textarea" maxlength="200" style="min-height:72px;" placeholder="Contá algo sobre vos como jugador..."></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="form-group">
+              <label class="form-label">Edad</label>
+              <input type="number" id="edit-age" class="form-input" min="14" max="80" placeholder="Ej: 24">
+            </div>
+            <div class="form-group">
+              <label class="form-label">WhatsApp <span style="color:var(--text-dim);font-size:10px;">(opcional)</span></label>
+              <input type="tel" id="edit-phone" class="form-input" placeholder="+549...">
+            </div>
+          </div>
+        </div>
+
+        <!-- DATOS DE JUEGO -->
+        <div class="edit-section-title" style="margin-top:20px;">Datos de juego</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Posición</label>
+            <select id="edit-position" class="form-select">
+              <option value="Indiferente">Indiferente</option>
+              <option value="Arquero">Arquero</option>
+              <option value="Defensor">Defensor</option>
+              <option value="Mediocampista">Mediocampista</option>
+              <option value="Delantero">Delantero</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nivel</label>
+            <select id="edit-level" class="form-select">
+              <option value="Amateur">Amateur</option>
+              <option value="Intermedio">Intermedio</option>
+              <option value="Competitivo">Competitivo</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- CAMBIAR CONTRASEÑA -->
+        <div class="edit-section-title" style="margin-top:20px;">Cambiar contraseña <span style="color:var(--text-dim);font-size:10px;text-transform:none;letter-spacing:0;">(dejá vacío para no cambiar)</span></div>
+        <div style="display:grid;gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Nueva contraseña</label>
+            <input type="password" id="edit-newpass" class="form-input" placeholder="Mínimo 6 caracteres">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirmar contraseña</label>
+            <input type="password" id="edit-confirmpass" class="form-input" placeholder="Repetí la nueva contraseña">
+          </div>
+        </div>
+
+        <p id="edit-error" style="color:var(--red);font-size:13px;display:none;margin-top:4px;"></p>
+
+        <div style="display:flex;gap:10px;margin-top:20px;">
+          <button class="btn btn-primary btn-full" id="save-btn" onclick="saveProfile()">💾 Guardar cambios</button>
+          <button class="btn btn-ghost" onclick="closeEditModal()">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <div class="container" style="padding-top:32px;padding-bottom:60px;" id="page-content">
+    <div class="empty-state"><div class="empty-icon">⏳</div><p>Cargando perfil...</p></div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    const userId     = new URLSearchParams(location.search).get('id');
+    if (!userId) window.location.href = 'matches.html';
+
+    const currentUser  = api.getUser(); // Lee de localStorage (función correcta)
+    const isOwnProfile = currentUser?._id === userId;
+    let profileUser    = null;
+    let avatarChanged  = false;
+    let avatarFile     = null;
+
+    // ===== CARGAR PERFIL =====
+    async function loadProfile() {
+      const res = await api.getUserById(userId); // ← usa getUserById (API)
+      if (!res.success) {
+        document.getElementById('page-content').innerHTML =
+          `<div class="empty-state"><div class="empty-icon">❌</div>
+           <p>Perfil no encontrado.</p>
+           <a href="matches.html" class="btn btn-outline mt-16">← Volver</a></div>`;
+        return;
+      }
+      profileUser = res.user;
+      document.title = `${profileUser.name} — MatchPlay`;
+      renderProfile(res);
+    }
+
+    function renderProfile({ user, recentMatches, comments }) {
+      const r = user.rating;
+      document.getElementById('page-content').innerHTML = `
+        <!-- CABECERA -->
+        <div class="profile-header mb-24">
+          <div style="position:relative;">
+            ${isOwnProfile
+              ? `<div class="avatar-upload-wrap" onclick="document.getElementById('avatar-file-input').click()" style="width:fit-content;cursor:pointer;">
+                  ${avatarHtml(user.avatar, user.name, 96)}
+                  <div class="avatar-overlay">📷</div>
+                 </div>`
+              : avatarHtml(user.avatar, user.name, 96)
+            }
+          </div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+              <div>
+                <h1 class="profile-name">${user.name}</h1>
+                <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                  ${levelBadge(user.level)}
+                  <span class="badge" style="background:rgba(255,255,255,0.06);color:var(--text-muted);">${user.position}</span>
+                  ${user.age ? `<span class="badge" style="background:rgba(255,255,255,0.04);color:var(--text-dim);">${user.age} años</span>` : ''}
+                  ${user.isVerified ? '<span class="badge badge-open">✅ Verificado</span>' : ''}
+                </div>
+                ${user.bio ? `<p style="color:var(--text-muted);font-size:15px;margin-top:12px;max-width:500px;">${user.bio}</p>` : ''}
+              </div>
+              <div style="display:flex;gap:8px;">
+                ${isOwnProfile
+                  ? `<button onclick="openEdit()" class="btn btn-outline btn-sm">✏️ Editar perfil</button>`
+                  : currentUser
+                    ? `<button onclick="reportUser()" class="btn btn-ghost btn-sm">🚩 Reportar</button>`
+                    : ''
+                }
+              </div>
+            </div>
+            <div class="profile-stats">
+              <div class="profile-stat"><div class="profile-stat-num">${user.matchesPlayed}</div><div class="profile-stat-label">Partidos</div></div>
+              <div class="profile-stat"><div class="profile-stat-num">${user.matchesOrganized}</div><div class="profile-stat-label">Organizados</div></div>
+              <div class="profile-stat"><div class="profile-stat-num">${r?.average > 0 ? r.average : '—'}</div><div class="profile-stat-label">Rating</div></div>
+              <div class="profile-stat"><div class="profile-stat-num">${r?.totalRatings || 0}</div><div class="profile-stat-label">Califics.</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="gap:24px;align-items:start;">
+          <!-- IZQUIERDA -->
+          <div style="display:grid;gap:20px;">
+
+            <!-- REPUTACIÓN -->
+            ${r?.totalRatings > 0 ? `
+            <div class="card">
+              <h3 class="font-display" style="font-size:22px;margin-bottom:20px;">⭐ Reputación</h3>
+              <div style="text-align:center;margin-bottom:20px;">
+                <div style="font-family:var(--font-display);font-size:64px;color:var(--accent);line-height:1;">${r.average}</div>
+                <div class="text-muted text-sm">promedio de ${r.totalRatings} calificaciones</div>
+                ${starsHtml(r.average)}
+              </div>
+              <div style="display:grid;gap:10px;">
+                <div class="rating-bar-row"><span class="text-muted">⏰ Puntualidad</span><div class="rating-bar-bg"><div class="rating-bar-fill" style="width:${(r.punctuality/5)*100}%"></div></div><span class="text-accent" style="font-weight:700;">${r.punctuality}</span></div>
+                <div class="rating-bar-row"><span class="text-muted">🤝 Fair Play</span><div class="rating-bar-bg"><div class="rating-bar-fill" style="width:${(r.fairPlay/5)*100}%"></div></div><span class="text-accent" style="font-weight:700;">${r.fairPlay}</span></div>
+                <div class="rating-bar-row"><span class="text-muted">😊 Actitud</span><div class="rating-bar-bg"><div class="rating-bar-fill" style="width:${(r.attitude/5)*100}%"></div></div><span class="text-accent" style="font-weight:700;">${r.attitude}</span></div>
+              </div>
+            </div>` : `
+            <div class="card">
+              <h3 class="font-display" style="font-size:22px;margin-bottom:12px;">⭐ Reputación</h3>
+              <p class="text-muted">Sin calificaciones aún. Aparecen después de jugar partidos.</p>
+            </div>`}
+
+            <!-- COMENTARIOS -->
+            <div class="card">
+              <h3 class="font-display" style="font-size:22px;margin-bottom:16px;">💬 Comentarios</h3>
+              ${currentUser && !isOwnProfile ? `
+              <div style="display:flex;gap:8px;margin-bottom:16px;">
+                <input type="text" id="comment-input" class="form-input" placeholder="Dejá un comentario..." maxlength="500">
+                <button class="btn btn-primary btn-sm" onclick="postComment()" style="white-space:nowrap;">Enviar</button>
+              </div>` : ''}
+              <div id="comments-list" style="display:grid;gap:12px;">
+                ${comments?.length ? comments.map(c => `
+                  <div style="display:flex;gap:10px;">
+                    <a href="profile.html?id=${c.author?._id}">${avatarHtml(c.author?.avatar, c.author?.name||'?', 36)}</a>
+                    <div style="flex:1;background:var(--card2);padding:12px;border-radius:var(--radius-sm);">
+                      <div class="flex-between">
+                        <a href="profile.html?id=${c.author?._id}" style="font-weight:600;font-size:13px;color:var(--text);text-decoration:none;">${c.author?.name}</a>
+                        <span class="text-xs text-muted">${formatDateShort(c.createdAt)}</span>
+                      </div>
+                      <p style="font-size:14px;color:var(--text-muted);margin-top:4px;">${c.content}</p>
+                    </div>
+                  </div>`).join('') : '<p class="text-muted text-sm">Sin comentarios aún.</p>'}
+              </div>
+            </div>
+          </div>
+
+          <!-- DERECHA -->
+          <div style="display:grid;gap:20px;">
+            <div class="card">
+              <h3 class="font-display" style="font-size:22px;margin-bottom:16px;">⚽ Últimos partidos</h3>
+              ${recentMatches?.length ? recentMatches.map(m => `
+                <a href="match-detail.html?id=${m._id}" style="display:flex;gap:10px;padding:10px;background:var(--card2);border-radius:var(--radius-sm);text-decoration:none;color:var(--text);margin-bottom:8px;transition:background .2s;" onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background='var(--card2)'">
+                  <span style="font-size:22px;">⚽</span>
+                  <div>
+                    <div style="font-weight:600;font-size:14px;">${m.title}</div>
+                    <div class="text-sm text-muted">${formatDateShort(m.date)} · ${m.format} · ${m.location?.name}</div>
+                  </div>
+                </a>`).join('') : '<p class="text-muted text-sm">Sin partidos jugados aún.</p>'}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // ===== MODAL EDITAR =====
+    function openEdit() {
+      // Pre-cargar datos actuales
+      document.getElementById('edit-name').value        = profileUser.name || '';
+      document.getElementById('edit-bio').value         = profileUser.bio  || '';
+      document.getElementById('edit-age').value         = profileUser.age  || '';
+      document.getElementById('edit-phone').value       = profileUser.phone || '';
+      document.getElementById('edit-position').value    = profileUser.position || 'Indiferente';
+      document.getElementById('edit-level').value       = profileUser.level || 'Amateur';
+      document.getElementById('edit-newpass').value     = '';
+      document.getElementById('edit-confirmpass').value = '';
+      document.getElementById('edit-error').style.display = 'none';
+
+      // Preview avatar actual
+      const wrap = document.getElementById('avatar-preview-wrap');
+      wrap.innerHTML = avatarHtml(profileUser.avatar, profileUser.name, 80);
+
+      avatarChanged = false;
+      avatarFile = null;
+      document.getElementById('edit-modal').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+      document.getElementById('edit-modal').classList.add('hidden');
+    }
+
+    function previewAvatar(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { toast.error('La imagen no puede superar 2MB.'); return; }
+  avatarFile    = file;
+  avatarChanged = true;
+  const reader  = new FileReader();
+  reader.onload = (e) => {
+    const wrap = document.getElementById('avatar-preview-wrap');
+    wrap.innerHTML = `<img src="${e.target.result}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);">`;
+    openEdit(); // ← AGREGÁ ESTA LÍNEA
+  };
+  reader.readAsDataURL(file);
+}
+
+    async function saveProfile() {
+      const errEl = document.getElementById('edit-error');
+      const btn   = document.getElementById('save-btn');
+      errEl.style.display = 'none';
+
+      const newPass     = document.getElementById('edit-newpass').value;
+      const confirmPass = document.getElementById('edit-confirmpass').value;
+
+      if (newPass && newPass.length < 6) {
+        errEl.textContent = 'La contraseña debe tener al menos 6 caracteres.'; errEl.style.display = 'block'; return;
+      }
+      if (newPass && newPass !== confirmPass) {
+        errEl.textContent = 'Las contraseñas no coinciden.'; errEl.style.display = 'block'; return;
+      }
+
+      btn.disabled = true; btn.textContent = 'Guardando...';
+
+      // 1. Subir avatar si cambió
+      if (avatarChanged && avatarFile) {
+        const formData = new FormData();
+        formData.append('avatar', avatarFile);
+        const avatarRes = await api.uploadAvatar(formData);
+        if (!avatarRes.success) {
+          toast.error(avatarRes.message || 'Error al subir la foto.');
+          btn.disabled = false; btn.textContent = '💾 Guardar cambios';
+          return;
+        }
+      }
+
+      // 2. Actualizar datos del perfil
+      const data = {
+        name:     document.getElementById('edit-name').value.trim(),
+        bio:      document.getElementById('edit-bio').value.trim(),
+        position: document.getElementById('edit-position').value,
+        level:    document.getElementById('edit-level').value,
+        phone:    document.getElementById('edit-phone').value.trim(),
+      };
+      const age = document.getElementById('edit-age').value;
+      if (age) data.age = parseInt(age);
+      if (newPass) data.password = newPass;
+
+      const res = await api.updateProfile(data);
+      btn.disabled = false; btn.textContent = '💾 Guardar cambios';
+
+      if (res.success) {
+        localStorage.setItem('mp_user', JSON.stringify(res.user));
+        toast.success('¡Perfil actualizado! ✅');
+        closeEditModal();
+        await loadProfile();
+      } else {
+        errEl.textContent = res.message || 'Error al guardar.';
+        errEl.style.display = 'block';
+      }
+    }
+
+    // ===== COMENTARIOS =====
+    async function postComment() {
+      const input   = document.getElementById('comment-input');
+      const content = input.value.trim();
+      if (!content) return;
+      const res = await api.postComment({ content, targetType: 'user', targetId: userId });
+      if (res.success) { input.value = ''; await loadProfile(); }
+      else toast.error(res.message);
+    }
+
+    // ===== REPORTAR =====
+    async function reportUser() {
+      if (!confirm('¿Reportar a este usuario?')) return;
+      const res = await api.reportUser(userId);
+      if (res.success) toast.success('Usuario reportado.');
+      else toast.error(res.message);
+    }
+
+    // Cerrar modal con Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeEditModal();
+    });
+
+    loadProfile();
+  </script>
+</body>
+</html>

@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MatchPlay — Encontrá tu partido</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/index.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="shortcut icon" href="img/icon.png" type="image/x-icon" />
+  </head>
+  <body>
+    <!-- ===== HERO ===== -->
+    <section class="hero-section">
+      <div class="field-bg"></div>
+      <div class="field-lines">
+        <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+          <rect
+            x="80"
+            y="50"
+            width="1280"
+            height="800"
+            fill="none"
+            stroke="white"
+            stroke-width="2"
+          />
+          <line
+            x1="720"
+            y1="50"
+            x2="720"
+            y2="850"
+            stroke="white"
+            stroke-width="2"
+          />
+          <circle
+            cx="720"
+            cy="450"
+            r="110"
+            fill="none"
+            stroke="white"
+            stroke-width="2"
+          />
+          <circle cx="720" cy="450" r="5" fill="white" />
+          <rect
+            x="80"
+            y="280"
+            width="165"
+            height="340"
+            fill="none"
+            stroke="white"
+            stroke-width="2"
+          />
+          <rect
+            x="80"
+            y="360"
+            width="60"
+            height="180"
+            fill="none"
+            stroke="white"
+            stroke-width="2"
+          />
+          <rect
+            x="1195"
+            y="280"
+            width="165"
+            height="340"
+            fill="none"
+            stroke="white"
+            stroke-width="2"
+          />
+          <rect
+            x="1300"
+            y="360"
+            width="60"
+            height="180"
+            fill="none"
+            stroke="white"
+            stroke-width="2"
+          />
+          <path
+            d="M 245 370 A 85 85 0 0 1 245 530"
+            fill="none"
+            stroke="white"
+            stroke-width="2"
+          />
+          <path
+            d="M 1195 370 A 85 85 0 0 0 1195 530"
+            fill="none"
+            stroke="white"
+            stroke-width="2"
+          />
+          <path
+            d="M 80 70 A 22 22 0 0 1 102 50"
+            fill="none"
+            stroke="white"
+            stroke-width="2"
+          />
+          <path
+            d="M 1360 70 A 22 22 0 0 0 1338 50"
+            fill="none"
+            stroke="white"
+            stroke-width="2"
+          />
+          <path
+            d="M 80 830 A 22 22 0 0 0 102 850"
+            fill="none"
+            stroke="white"
+            stroke-width="2"
+          />
+          <path
+            d="M 1360 830 A 22 22 0 0 1 1338 850"
+            fill="none"
+            stroke="white"
+            stroke-width="2"
+          />
+        </svg>
+      </div>
+      <div class="field-overlay"></div>
+      <div class="field-bottom-fade"></div>
+
+      <!-- PELOTA REBOTANDO EN EL CENTRO -->
+      <div class="ball-scene">
+        <div>
+          <div class="ball-wrapper">
+            <img class="ball-svg" src="/frontend/img/pelota.png" alt="pelota" />
+            <div class="ball-ground-shadow"></div>
+          </div>
+          <div class="ball-ground-shadow"></div>
+        </div>
+      </div>
+
+      <!-- CONTENIDO -->
+      <div class="hero-layout">
+        <!-- IZQUIERDA -->
+        <div class="hero-left">
+          <div class="hero-logo">
+            <div class="hero-logo-icon">⚽</div>
+            <div class="hero-logo-text">MATCH<span>PLAY</span></div>
+          </div>
+          <div class="hero-tag">
+            <span>●</span> La plataforma del fútbol social
+          </div>
+          <h1 class="hero-title">
+            JUGÁ SIN<br />
+            <span class="ht-green">LÍMITES</span><br />
+            <span class="ht-outline">HOY</span>
+          </h1>
+          <p class="hero-desc">
+            Encontrá partidos cerca tuyo, unite a equipos, conocé jugadores y
+            viví el fútbol aunque no tengas con quién jugar.
+          </p>
+          <div class="hero-stats">
+            <div>
+              <div class="hs-num" id="stat-matches">—</div>
+              <div class="hs-label">Partidos activos</div>
+            </div>
+            <div class="hs-divider"></div>
+            <div>
+              <div class="hs-num">100%</div>
+              <div class="hs-label">Gratis</div>
+            </div>
+            <div class="hs-divider"></div>
+            <div>
+              <div
+                style="margin-bottom: 10px; margin-left: 15px"
+                class="hs-num"
+              >
+                ⚽
+              </div>
+              <div class="hs-label">Fútbol social</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FORMULARIO -->
+        <div class="hero-form-card">
+          <div class="htabs">
+            <button class="htab active" onclick="switchTab('login')">
+              Ingresar
+            </button>
+            <button class="htab" onclick="switchTab('register')">
+              Registrarse
+            </button>
+          </div>
+
+          <!-- LOGIN -->
+          <div class="hsection active" id="hsec-login">
+            <div class="hgroup">
+              <label class="hlabel">Email</label
+              ><input
+                type="email"
+                id="login-email"
+                class="hinput"
+                placeholder="tu@email.com"
+              />
+            </div>
+            <div class="hgroup">
+              <label class="hlabel">Contraseña</label
+              ><input
+                type="password"
+                id="login-pass"
+                class="hinput"
+                placeholder="••••••••"
+              />
+            </div>
+            <p class="herror" id="login-error"></p>
+            <button class="hbtn" id="login-btn" onclick="doLogin()">
+              ⚽ Entrar a jugar
+            </button>
+            <div class="hdivider">o explorá sin cuenta</div>
+            <a href="matches.html" class="hbtn-sec"
+              >Ver partidos disponibles →</a
+            >
+          </div>
+
+          <!-- REGISTER -->
+          <div class="hsection" id="hsec-register">
+            <div class="hgroup">
+              <label class="hlabel">Nombre completo</label
+              ><input
+                type="text"
+                id="reg-name"
+                class="hinput"
+                placeholder="Tu nombre"
+              />
+            </div>
+            <div class="hgroup">
+              <label class="hlabel">Email</label
+              ><input
+                type="email"
+                id="reg-email"
+                class="hinput"
+                placeholder="tu@email.com"
+              />
+            </div>
+            <div class="hgroup">
+              <label class="hlabel">Contraseña</label
+              ><input
+                type="password"
+                id="reg-pass"
+                class="hinput"
+                placeholder="Mínimo 6 caracteres"
+              />
+            </div>
+            <div class="hrow">
+              <div class="hgroup">
+                <label class="hlabel">Posición</label>
+                <select id="reg-position" class="hselect">
+                  <option value="Indiferente">Indiferente</option>
+                  <option value="Arquero">Arquero</option>
+                  <option value="Defensor">Defensor</option>
+                  <option value="Mediocampista">Mediocampista</option>
+                  <option value="Delantero">Delantero</option>
+                </select>
+              </div>
+              <div class="hgroup">
+                <label class="hlabel">Nivel</label>
+                <select id="reg-level" class="hselect">
+                  <option value="Amateur">Amateur</option>
+                  <option value="Intermedio">Intermedio</option>
+                  <option value="Competitivo">Competitivo</option>
+                </select>
+              </div>
+            </div>
+            <div class="hgroup">
+              <label class="hlabel"
+                >WhatsApp
+                <span style="color: #333; font-size: 9px"
+                  >(opcional)</span
+                ></label
+              >
+              <input
+                type="tel"
+                id="reg-phone"
+                class="hinput"
+                placeholder="+5491155555555"
+              />
+            </div>
+            <p class="herror" id="reg-error"></p>
+            <button class="hbtn" id="reg-btn" onclick="doRegister()">
+              Crear mi cuenta ⚽
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PARTIDOS PRÓXIMOS ===== -->
+    <section
+      class="section"
+      style="
+        background: var(--bg2);
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+      "
+    >
+      <div class="container">
+        <div class="flex-between mb-24">
+          <div>
+            <h2 class="section-title">Partidos <em>próximos</em></h2>
+            <p class="section-sub" style="margin-bottom: 0">Unite hoy mismo</p>
+          </div>
+          <a href="matches.html" class="btn btn-outline btn-sm">Ver todos →</a>
+        </div>
+        <div class="live-grid" id="preview-matches">
+          <div class="empty-state">
+            <div class="empty-icon">⏳</div>
+            <p>Cargando partidos...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== POR QUÉ MATCHPLAY ===== -->
+    <section class="section">
+      <div class="container">
+        <h2 class="section-title" style="text-align: center">
+          ¿Por qué <em>MatchPlay</em>?
+        </h2>
+        <p class="section-sub" style="text-align: center">
+          Todo lo que necesitás para jugar con desconocidos
+        </p>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon">🗺️</div>
+            <div class="feature-title">Encontrá canchas</div>
+            <div class="feature-desc">
+              Mapa interactivo con todos los partidos cerca tuyo. Filtrá por
+              zona, nivel y formato.
+            </div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">⭐</div>
+            <div class="feature-title">Calificaciones</div>
+            <div class="feature-desc">
+              Sistema de reputación basado en puntualidad, fair play y actitud.
+              Jugá con gente seria.
+            </div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">💬</div>
+            <div class="feature-title">Chat del partido</div>
+            <div class="feature-desc">
+              Chat interno exclusivo para participantes confirmados. Coordiná
+              todo antes del partido.
+            </div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">📱</div>
+            <div class="feature-title">Notificaciones</div>
+            <div class="feature-desc">
+              Avisamos por email y WhatsApp cuando te confirman, cuando hay
+              novedades o recordatorios.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CÓMO FUNCIONA ===== -->
+    <section
+      class="section"
+      style="
+        background: var(--bg2);
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+      "
+    >
+      <div class="container">
+        <h2
+          class="section-title"
+          style="text-align: center; margin-bottom: 48px"
+        >
+          Cómo <em>funciona</em>
+        </h2>
+        <div style="display: grid; gap: 36px; max-width: 680px; margin: 0 auto">
+          <div class="how-step">
+            <div class="step-num">01</div>
+            <div>
+              <div class="step-title">Creá tu perfil</div>
+              <div class="step-desc">
+                Registrate, completá tu posición, nivel y subí una foto. Tu
+                reputación empieza desde el primer partido.
+              </div>
+            </div>
+          </div>
+          <div class="how-step">
+            <div class="step-num">02</div>
+            <div>
+              <div class="step-title">Encontrá un partido</div>
+              <div class="step-desc">
+                Explorá el mapa o los listados. Filtrá por fecha, zona, nivel y
+                formato. Unite con un clic.
+              </div>
+            </div>
+          </div>
+          <div class="how-step">
+            <div class="step-num">03</div>
+            <div>
+              <div class="step-title">El organizador te confirma</div>
+              <div class="step-desc">
+                El creador del partido acepta tu solicitud. Te llega
+                notificación por email y WhatsApp.
+              </div>
+            </div>
+          </div>
+          <div class="how-step">
+            <div class="step-num">04</div>
+            <div>
+              <div class="step-title">¡A jugar y calificar!</div>
+              <div class="step-desc">
+                Después del partido, calificá a tus compañeros. Construí tu
+                reputación con cada partido.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CTA ===== -->
+    <section class="cta-section">
+      <div class="container">
+        <h2 class="section-title">Empezá a <em>jugar hoy</em></h2>
+        <p class="section-sub">
+          Gratis, sin complicaciones, con gente que quiere jugar como vos.
+        </p>
+        <a
+          href="#"
+          onclick="
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(() => switchTab('register'), 400);
+            return false;
+          "
+          class="btn btn-primary"
+          style="font-size: 17px; padding: 15px 44px"
+          >Crear cuenta gratis ⚽</a
+        >
+      </div>
+    </section>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="footer">
+      <div class="footer-brand">⚽ MATCHPLAY</div>
+      <p>
+        La plataforma del fútbol social ·
+        <a href="matches.html" style="color: var(--accent)">Ver partidos</a>
+      </p>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script>
+      if (api.isLoggedIn()) window.location.href = "dashboard.html";
+
+      function switchTab(tab) {
+        document
+          .querySelectorAll(".htab")
+          .forEach((t, i) =>
+            t.classList.toggle(
+              "active",
+              (tab === "login" && i === 0) || (tab === "register" && i === 1),
+            ),
+          );
+        document
+          .getElementById("hsec-login")
+          .classList.toggle("active", tab === "login");
+        document
+          .getElementById("hsec-register")
+          .classList.toggle("active", tab === "register");
+      }
+
+      async function doLogin() {
+        const email = document.getElementById("login-email").value.trim();
+        const pass = document.getElementById("login-pass").value;
+        const errEl = document.getElementById("login-error");
+        const btn = document.getElementById("login-btn");
+        errEl.classList.remove("show");
+        if (!email || !pass) {
+          errEl.textContent = "Completá email y contraseña.";
+          errEl.classList.add("show");
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = "Ingresando...";
+        const res = await api.login({ email, password: pass });
+        btn.disabled = false;
+        btn.textContent = "⚽ Entrar a jugar";
+        if (res.success) {
+          api.setAuth(res.token, res.refreshToken, res.user);
+          toast.success("¡Bienvenido de nuevo!");
+          setTimeout(() => (window.location.href = "dashboard.html"), 1000);
+        } else {
+          errEl.textContent = res.message || "Credenciales inválidas.";
+          errEl.classList.add("show");
+        }
+      }
+
+      async function doRegister() {
+        const name = document.getElementById("reg-name").value.trim();
+        const email = document.getElementById("reg-email").value.trim();
+        const pass = document.getElementById("reg-pass").value;
+        const position = document.getElementById("reg-position").value;
+        const level = document.getElementById("reg-level").value;
+        const phone = document.getElementById("reg-phone").value.trim();
+        const errEl = document.getElementById("reg-error");
+        const btn = document.getElementById("reg-btn");
+        errEl.classList.remove("show");
+        if (!name || !email || !pass) {
+          errEl.textContent = "Completá nombre, email y contraseña.";
+          errEl.classList.add("show");
+          return;
+        }
+        if (pass.length < 6) {
+          errEl.textContent = "Mínimo 6 caracteres en la contraseña.";
+          errEl.classList.add("show");
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = "Creando cuenta...";
+        const res = await api.register({
+          name,
+          email,
+          password: pass,
+          position,
+          level,
+          phone: phone || undefined,
+        });
+        btn.disabled = false;
+        btn.textContent = "Crear mi cuenta ⚽";
+        if (res.success) {
+          api.setAuth(res.token, res.refreshToken, res.user);
+          toast.success("¡Bienvenido a MatchPlay! 🎉");
+          setTimeout(() => (window.location.href = "dashboard.html"), 1200);
+        } else {
+          const msg =
+            res.errors?.[0]?.msg || res.message || "Error al registrarse.";
+          errEl.textContent = msg;
+          errEl.classList.add("show");
+        }
+      }
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter") return;
+        if (document.getElementById("hsec-login").classList.contains("active"))
+          doLogin();
+        else doRegister();
+      });
+
+      async function loadPreview() {
+        const el = document.getElementById("preview-matches");
+        const res = await api.getMatches({ status: "open" });
+        if (!res.success || !res.matches?.length) {
+          el.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+          <div class="empty-icon">⚽</div>
+          <p class="text-muted">No hay partidos abiertos todavía. <a href="create-match.html" style="color:var(--accent);">¡Creá el primero!</a></p>
+        </div>`;
+          document.getElementById("stat-matches").textContent = "0";
+          return;
+        }
+        document.getElementById("stat-matches").textContent =
+          res.matches.length;
+        el.innerHTML = res.matches
+          .slice(0, 6)
+          .map(
+            (m) => `
+        <a href="match-detail.html?id=${m._id}" class="match-card">
+          <div class="match-card-header">
+            <div>
+              <div class="match-card-title">${m.title}</div>
+              <div style="display:flex;gap:6px;margin-top:5px;">
+                ${levelBadge(m.level)}
+                <span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text-muted);">${m.format}</span>
+              </div>
+            </div>
+            ${statusBadge(m.status)}
+          </div>
+          <div class="match-card-body">
+            <div class="match-card-row"><i class="fa fa-calendar"></i>${formatDate(m.date)}</div>
+            <div class="match-card-row"><i class="fa fa-map-marker-alt"></i>${m.location.name}</div>
+            <div class="match-card-row">
+              ${avatarHtml(m.organizer?.avatar, m.organizer?.name || "?", 20)}
+              <span>${m.organizer?.name}</span>
+              ${m.organizer?.rating?.average > 0 ? `<span class="text-accent text-xs">⭐ ${m.organizer.rating.average}</span>` : ""}
+            </div>
+            <div class="match-progress">
+              <div class="flex-between text-xs text-muted" style="margin-bottom:4px;">
+                <span>Jugadores</span>
+                <span><strong style="color:var(--accent)">${m.confirmedCount ?? 0}</strong>/${m.totalPlayers}</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill" style="width:${Math.min(100, ((m.confirmedCount ?? 0) / m.totalPlayers) * 100)}%"></div>
+              </div>
+            </div>
+            ${
+              m.costPerPerson > 0
+                ? `<div class="match-card-row"><i class="fa fa-dollar-sign"></i>$${m.costPerPerson} por persona</div>`
+                : `<div class="match-card-row text-accent text-sm"><i class="fa fa-check"></i>Gratis</div>`
+            }
+          </div>
+        </a>`,
+          )
+          .join("");
+      }
+      loadPreview();
+    </script>
+  </body>
+</html>

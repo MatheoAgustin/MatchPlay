@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Partido — MatchPlay</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .match-layout { display:grid; grid-template-columns: 1fr 360px; gap:24px; align-items:start; }
+    @media(max-width:900px) { .match-layout { grid-template-columns:1fr; } }
+    .match-hero { background: linear-gradient(135deg, var(--card2), var(--card)); border:1px solid var(--border); border-radius:var(--radius); padding:32px; margin-bottom:24px; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand">⚽ MATCH<span>PLAY</span></a>
+    <div id="navbar-links" class="navbar-links"></div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div id="navbar-avatar"></div>
+      <button class="navbar-mobile-toggle" id="mobile-toggle">☰</button>
+    </div>
+  </nav>
+
+  <div class="container" style="padding-top:32px;padding-bottom:60px;" id="page-content">
+    <div class="empty-state"><div class="empty-icon">⏳</div><p>Cargando partido...</p></div>
+  </div>
+
+  <!-- RATING MODAL -->
+  <div id="rating-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <span>Calificar jugadores</span>
+        <button class="modal-close" onclick="document.getElementById('rating-modal').classList.add('hidden')">✕</button>
+      </div>
+      <div class="modal-body" id="rating-modal-body"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    const matchId = new URLSearchParams(location.search).get('id');
+    if (!matchId) window.location.href = 'matches.html';
+
+    let match = null, currentUser = api.getUser(), socket = null, myRatedIds = [];
+
+    async function loadMatch() {
+      const res = await api.getMatch(matchId);
+      if (!res.success) {
+        document.getElementById('page-content').innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><p>Partido no encontrado.</p><a href="matches.html" class="btn btn-outline mt-16">← Volver</a></div>';
+        return;
+      }
+      match = res.match;
+      if (currentUser) {
+        const rRes = await api.getMyRatingsForMatch(matchId);
+        if (rRes.success) myRatedIds = rRes.ratedIds || [];
+      }
+      renderMatch();
+      if (isConfirmedPlayer()) initSocket();
+    }
+
+    const isOrganizer = () => currentUser && match.organizer?._id === currentUser._id;
+    const isConfirmedPlayer = () => {
+      if (!currentUser) return false;
+      if (isOrganizer()) return true;
+      return match.players?.some(p => p.user?._id === currentUser._id && p.status === 'confirmed');
+    };
+    const isInMatch = () => {
+      if (!currentUser) return false;
+      return match.players?.some(p => p.user?._id === currentUser._id);
+    };
+    const myEntry = () => match.players?.find(p => p.user?._id === currentUser?._id);
+
+    function renderMatch() {
+      const m = match;
+      const confirmed = m.players?.filter(p => p.status === 'confirmed') || [];
+      const pending = m.players?.filter(p => p.status === 'pending') || [];
+      const confirmedCount = confirmed.length;
+      const progress = Math.min(100, (confirmedCount / m.totalPlayers) * 100);
+      const me = myEntry();
+
+      document.title = `${m.title} — MatchPlay`;
+      document.getElementById('page-content').innerHTML = `
+        <div style="margin-bottom:16px;"><a href="matches.html" style="color:var(--text-muted);text-decoration:none;font-size:14px;">← Volver a partidos</a></div>
+
+        <!-- HERO -->
+        <div class="match-hero">
+          <div class="flex-between" style="flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+            <div>
+              <h1 style="font-family:var(--font-display);font-size:48px;line-height:1;margin-bottom:8px;">${m.title}</h1>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                ${statusBadge(m.status)}
+                ${levelBadge(m.level)}
+                <span class="badge" style="background:rgba(255,255,255,0.05);color:var(--text-muted);">${m.format}</span>
+                ${m.costPerPerson > 0 ? `<span class="badge" style="background:rgba(255,215,64,0.1);color:var(--yellow);">$${m.costPerPerson}/persona</span>` : '<span class="badge" style="background:rgba(0,230,118,0.1);color:var(--accent);">Gratis</span>'}
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-family:var(--font-display);font-size:48px;color:var(--accent);line-height:1;">${confirmedCount}<span style="font-size:24px;color:var(--text-muted);">/${m.totalPlayers}</span></div>
+              <div class="text-sm text-muted">jugadores</div>
+            </div>
+          </div>
+          <div class="progress-bar" style="height:6px;margin-bottom:20px;"><div class="progress-fill" style="width:${progress}%"></div></div>
+          <div style="display:grid;gap:10px;">
+            <div class="match-card-row"><i class="fa fa-calendar" style="color:var(--accent);width:20px;"></i><strong>${formatDateFull(m.date)}</strong></div>
+            <div class="match-card-row"><i class="fa fa-map-marker-alt" style="color:var(--accent);width:20px;"></i>${m.location.name} — ${m.location.address}</div>
+            <div class="match-card-row"><i class="fa fa-user" style="color:var(--accent);width:20px;"></i>Organizado por <a href="profile.html?id=${m.organizer?._id}" style="color:var(--accent);text-decoration:none;font-weight:600;">${m.organizer?.name}</a></div>
+          </div>
+          ${m.description ? `<p style="margin-top:16px;color:var(--text-muted);font-size:15px;padding-top:16px;border-top:1px solid var(--border);">${m.description}</p>` : ''}
+        </div>
+
+        <div class="match-layout">
+          <div>
+            <!-- TABS -->
+            <div class="tabs">
+              <button class="tab active" onclick="showTab('jugadores')">👥 Jugadores (${confirmedCount})</button>
+              ${pending.length && isOrganizer() ? `<button class="tab" onclick="showTab('pendientes')">⏳ Pendientes (${pending.length})</button>` : ''}
+              ${isConfirmedPlayer() ? `<button class="tab" onclick="showTab('chat')">💬 Chat</button>` : ''}
+              <button class="tab" onclick="showTab('comentarios')">💬 Comentarios</button>
+            </div>
+
+            <!-- JUGADORES -->
+            <div id="tab-jugadores" style="display:grid;gap:10px;">
+              ${confirmed.map(p => `
+                <div class="player-item">
+                  <a href="profile.html?id=${p.user?._id}" style="text-decoration:none;display:flex;align-items:center;gap:10px;flex:1;">
+                    ${avatarHtml(p.user?.avatar, p.user?.name || '?', 40)}
+                    <div class="player-info">
+                      <div class="player-name">${p.user?.name} ${p.user?._id === m.organizer?._id ? '<span class="badge badge-open" style="font-size:10px;">Org.</span>' : ''}</div>
+                      <div class="player-meta">${p.position} · ${p.user?.level} ${p.user?.rating?.average > 0 ? `· ⭐ ${p.user.rating.average}` : ''}</div>
+                    </div>
+                  </a>
+                  ${isOrganizer() && p.user?._id !== currentUser?._id ? `
+                    <button class="btn btn-danger btn-sm" onclick="managePlayer('${p.user?._id}','remove')">Expulsar</button>
+                  ` : ''}
+                  ${m.status === 'played' && m.isRatingOpen && currentUser && p.user?._id !== currentUser?._id && isConfirmedPlayer() && !myRatedIds.includes(p.user?._id) ? `
+                    <button class="btn btn-outline btn-sm" onclick="openRating('${p.user?._id}','${p.user?.name}')">⭐ Calificar</button>
+                  ` : ''}
+                </div>
+              `).join('') || '<p class="text-muted">Sin jugadores confirmados aún.</p>'}
+            </div>
+
+            <!-- PENDIENTES (solo organizador) -->
+            ${pending.length && isOrganizer() ? `
+            <div id="tab-pendientes" style="display:none;display:grid;gap:10px;">
+              ${pending.map(p => `
+                <div class="player-item">
+                  <a href="profile.html?id=${p.user?._id}" style="text-decoration:none;display:flex;align-items:center;gap:10px;flex:1;">
+                    ${avatarHtml(p.user?.avatar, p.user?.name || '?', 40)}
+                    <div class="player-info">
+                      <div class="player-name">${p.user?.name}</div>
+                      <div class="player-meta">${p.position} · ${p.user?.level} ${p.user?.rating?.average > 0 ? `· ⭐ ${p.user.rating.average}` : ''}</div>
+                    </div>
+                  </a>
+                  <div class="player-actions">
+                    <button class="btn btn-primary btn-sm" onclick="managePlayer('${p.user?._id}','confirm')">✓ Aceptar</button>
+                    <button class="btn btn-danger btn-sm" onclick="managePlayer('${p.user?._id}','reject')">✕ Rechazar</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>` : ''}
+
+            <!-- CHAT -->
+            ${isConfirmedPlayer() ? `
+            <div id="tab-chat" style="display:none;">
+              <div class="chat-container">
+                <div class="chat-header">⚽ Chat del partido <span class="text-muted text-sm">(solo participantes confirmados)</span></div>
+                <div class="chat-messages" id="chat-messages"></div>
+                <div class="chat-input">
+                  <input type="text" id="chat-input" class="form-input" placeholder="Escribí un mensaje..." maxlength="500">
+                  <button class="btn btn-primary btn-sm" onclick="sendMessage()">Enviar</button>
+                </div>
+              </div>
+            </div>` : ''}
+
+            <!-- COMENTARIOS -->
+            <div id="tab-comentarios" style="display:none;">
+              ${currentUser ? `
+              <div style="display:flex;gap:10px;margin-bottom:20px;">
+                <input type="text" id="comment-input" class="form-input" placeholder="Dejá un comentario sobre el partido..." maxlength="500">
+                <button class="btn btn-primary btn-sm" onclick="postComment()" style="white-space:nowrap;">Comentar</button>
+              </div>` : '<p class="text-muted text-sm mb-16"><a href="login.html" style="color:var(--accent);">Iniciá sesión</a> para comentar.</p>'}
+              <div id="comments-list" style="display:grid;gap:12px;"></div>
+            </div>
+          </div>
+
+          <!-- SIDEBAR -->
+          <div style="display:grid;gap:16px;">
+            <!-- ACTION CARD -->
+            <div class="card">
+              ${renderActionCard()}
+            </div>
+
+            <!-- MAP -->
+            <div class="card card-sm">
+              <h4 class="font-display" style="font-size:18px;margin-bottom:12px;">Ubicación</h4>
+              <div id="match-map" style="height:220px;border-radius:var(--radius-sm);overflow:hidden;"></div>
+              <p class="text-sm text-muted mt-8">📍 ${m.location.name}</p>
+            </div>
+
+            <!-- ORGANIZER -->
+            <div class="card card-sm">
+              <h4 class="font-display" style="font-size:18px;margin-bottom:12px;">Organizador</h4>
+              <a href="profile.html?id=${m.organizer?._id}" style="display:flex;gap:12px;align-items:center;text-decoration:none;color:var(--text);">
+                ${avatarHtml(m.organizer?.avatar, m.organizer?.name || '?', 48)}
+                <div>
+                  <div style="font-weight:700;">${m.organizer?.name}</div>
+                  <div class="text-sm text-muted">${m.organizer?.level} · ${m.organizer?.position}</div>
+                  ${m.organizer?.rating?.average > 0 ? `<div class="text-accent text-sm">⭐ ${m.organizer.rating.average} (${m.organizer.rating.totalRatings} calificaciones)</div>` : ''}
+                </div>
+              </a>
+            </div>
+
+            <!-- ORGANIZER ACTIONS -->
+            ${isOrganizer() ? `
+            <div class="card card-sm">
+              <h4 class="font-display" style="font-size:18px;margin-bottom:12px;">⚙️ Gestionar partido</h4>
+              <div style="display:grid;gap:8px;">
+                ${m.status === 'open' ? `<button class="btn btn-ghost btn-sm" onclick="closeMatch()">🔒 Cerrar inscripciones</button>` : ''}
+                ${m.status !== 'played' && m.status !== 'cancelled' ? `<button class="btn btn-outline btn-sm" onclick="markPlayed()">✅ Marcar como jugado</button>` : ''}
+                ${m.status !== 'cancelled' && m.status !== 'played' ? `<button class="btn btn-danger btn-sm" onclick="cancelMatch()">❌ Cancelar partido</button>` : ''}
+              </div>
+            </div>` : ''}
+          </div>
+        </div>
+      `;
+
+      // Init map
+      setTimeout(() => {
+        const mmap = L.map('match-map').setView([m.location.lat, m.location.lng], 15);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(mmap);
+        L.marker([m.location.lat, m.location.lng]).addTo(mmap).bindPopup(m.location.name).openPopup();
+      }, 100);
+
+      loadComments();
+      if (isConfirmedPlayer()) loadMessages();
+    }
+
+    function renderActionCard() {
+      if (!currentUser) return `<p class="text-muted text-sm">Iniciá sesión para unirte.</p><a href="login.html" class="btn btn-primary btn-full mt-16">Iniciar sesión</a>`;
+      const me = myEntry();
+      if (isOrganizer()) return `<span class="badge badge-open">Sos el organizador</span><p class="text-muted text-sm mt-8">Gestioná el partido desde el panel de abajo.</p>`;
+      if (!me) {
+        if (match.status !== 'open') return `<span class="${match.status === 'full' ? 'badge-full' : 'badge-cancelled'} badge">El partido está ${match.status === 'full' ? 'completo' : 'cerrado'}</span>`;
+        return `
+          <div class="form-group mb-12">
+            <label class="form-label">Tu posición</label>
+            <select id="join-position" class="form-select">
+              <option value="Indiferente">Indiferente</option>
+              <option value="Arquero">Arquero</option>
+              <option value="Defensor">Defensor</option>
+              <option value="Mediocampista">Mediocampista</option>
+              <option value="Delantero">Delantero</option>
+            </select>
+          </div>
+          <button class="btn btn-primary btn-full" onclick="joinMatch()">⚽ Solicitar unirse</button>`;
+      }
+      if (me.status === 'pending') return `<span class="badge badge-full">Solicitud pendiente</span><p class="text-muted text-sm mt-8">El organizador debe confirmar tu lugar.</p>`;
+      if (me.status === 'confirmed') return `<span class="badge badge-open">✅ Estás confirmado</span><p class="text-muted text-sm mt-8">¡Nos vemos en la cancha!</p>`;
+      if (me.status === 'rejected') return `<span class="badge badge-cancelled">Solicitud rechazada</span>`;
+      return '';
+    }
+
+    function showTab(tab) {
+      ['jugadores','pendientes','chat','comentarios'].forEach(t => {
+        const el = document.getElementById(`tab-${t}`);
+        if (el) el.style.display = 'none';
+      });
+      document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
+      const el = document.getElementById(`tab-${tab}`);
+      if (el) el.style.display = tab === 'jugadores' ? 'grid' : 'block';
+      event.target.classList.add('active');
+    }
+
+    async function joinMatch() {
+      const position = document.getElementById('join-position')?.value || 'Indiferente';
+      const res = await api.joinMatch(matchId, position);
+      if (res.success) { toast.success(res.message); await loadMatch(); }
+      else toast.error(res.message);
+    }
+
+    async function managePlayer(playerId, action) {
+      const labels = { confirm: 'aceptar', reject: 'rechazar', remove: 'expulsar' };
+      if (!confirm(`¿Querés ${labels[action]} a este jugador?`)) return;
+      const res = await api.managePlayer(matchId, playerId, action);
+      if (res.success) { toast.success('¡Listo!'); await loadMatch(); }
+      else toast.error(res.message);
+    }
+
+    async function cancelMatch() {
+      if (!confirm('¿Cancelar el partido? Se notificará a todos los jugadores.')) return;
+      const res = await api.cancelMatch(matchId);
+      if (res.success) { toast.success('Partido cancelado.'); await loadMatch(); }
+      else toast.error(res.message);
+    }
+
+    async function closeMatch() {
+      const res = await api.closeMatch(matchId);
+      if (res.success) { toast.success('Inscripciones cerradas.'); await loadMatch(); }
+      else toast.error(res.message);
+    }
+
+    async function markPlayed() {
+      if (!confirm('¿Marcar el partido como jugado? Se habilitarán las calificaciones.')) return;
+      const res = await api.playedMatch(matchId);
+      if (res.success) { toast.success(res.message); await loadMatch(); }
+      else toast.error(res.message);
+    }
+
+    // COMMENTS
+    async function loadComments() {
+      const res = await api.getComments('match', matchId);
+      const el = document.getElementById('comments-list');
+      if (!el) return;
+      if (!res.success || !res.comments?.length) { el.innerHTML = '<p class="text-muted text-sm">Sin comentarios aún.</p>'; return; }
+      el.innerHTML = res.comments.map(c => `
+        <div class="card card-sm">
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <a href="profile.html?id=${c.author?._id}">${avatarHtml(c.author?.avatar, c.author?.name || '?', 36)}</a>
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <a href="profile.html?id=${c.author?._id}" style="font-weight:600;font-size:14px;color:var(--text);text-decoration:none;">${c.author?.name}</a>
+                <span class="text-xs text-muted">${formatDateShort(c.createdAt)}</span>
+              </div>
+              <p style="margin-top:4px;font-size:14px;color:var(--text-muted);">${c.content}</p>
+            </div>
+            ${currentUser?._id === c.author?._id ? `<button onclick="deleteComment('${c._id}')" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px;">×</button>` : ''}
+          </div>
+        </div>`).join('');
+    }
+
+    async function postComment() {
+      const input = document.getElementById('comment-input');
+      const content = input.value.trim();
+      if (!content) return;
+      const res = await api.postComment({ content, targetType: 'match', targetId: matchId });
+      if (res.success) { input.value = ''; loadComments(); }
+      else toast.error(res.message);
+    }
+
+    async function deleteComment(id) {
+      const res = await api.deleteComment(id);
+      if (res.success) loadComments();
+      else toast.error(res.message);
+    }
+
+    // CHAT
+    async function loadMessages() {
+      const res = await api.getMessages(matchId);
+      if (!res.success) return;
+      const el = document.getElementById('chat-messages');
+      if (!el) return;
+      if (!res.messages?.length) { el.innerHTML = '<p class="text-muted text-sm" style="text-align:center;padding:20px;">Sin mensajes aún. ¡Decí algo!</p>'; return; }
+      el.innerHTML = res.messages.map(renderMessage).join('');
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function renderMessage(msg) {
+      const isMine = msg.sender?._id === currentUser?._id;
+      return `<div class="chat-msg ${isMine ? 'mine' : ''}">
+        ${avatarHtml(msg.sender?.avatar, msg.sender?.name || '?', 32)}
+        <div>
+          ${!isMine ? `<div class="chat-msg-name">${msg.sender?.name}</div>` : ''}
+          <div class="chat-msg-bubble">${msg.content}</div>
+        </div>
+      </div>`;
+    }
+
+    function initSocket() {
+      const token = api.getToken();
+      if (!token) return;
+      socket = io('http://localhost:5000', { auth: { token } });
+      socket.emit('join_match', matchId);
+      socket.on('message_received', (msg) => {
+        const el = document.getElementById('chat-messages');
+        if (!el) return;
+        el.innerHTML += renderMessage(msg);
+        el.scrollTop = el.scrollHeight;
+      });
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('chat-input');
+      const content = input.value.trim();
+      if (!content) return;
+      const res = await api.sendMessage(matchId, content);
+      if (res.success) {
+        input.value = '';
+        socket?.emit('new_message', { matchId, message: res.message });
+        const el = document.getElementById('chat-messages');
+        if (el) { el.innerHTML += renderMessage(res.message); el.scrollTop = el.scrollHeight; }
+      } else toast.error(res.message);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && document.activeElement?.id === 'chat-input') sendMessage();
+      if (e.key === 'Enter' && document.activeElement?.id === 'comment-input') postComment();
+    });
+
+    // RATING
+    function openRating(userId, userName) {
+      const body = document.getElementById('rating-modal-body');
+      body.innerHTML = `
+        <p class="text-muted">Calificá a <strong style="color:var(--accent);">${userName}</strong> por su participación en el partido</p>
+        ${['punctuality', 'fairPlay', 'attitude'].map(cat => {
+          const labels = { punctuality: '⏰ Puntualidad', fairPlay: '🤝 Fair Play', attitude: '😊 Actitud' };
+          return `<div class="form-group">
+            <label class="form-label">${labels[cat]}</label>
+            <div class="stars" id="stars-${cat}" data-val="0">
+              ${[1,2,3,4,5].map(i => `<span class="star" data-cat="${cat}" data-val="${i}">☆</span>`).join('')}
+            </div>
+          </div>`;
+        }).join('')}
+        <div class="form-group">
+          <label class="form-label">Comentario (opcional)</label>
+          <input type="text" id="rating-comment" class="form-input" placeholder="Tu comentario..." maxlength="200">
+        </div>
+        <button class="btn btn-primary btn-full" onclick="submitRating('${userId}')">⭐ Enviar calificación</button>
+      `;
+      // Star interactivity
+      body.querySelectorAll('.star').forEach(star => {
+        star.addEventListener('click', () => {
+          const cat = star.dataset.cat, val = parseInt(star.dataset.val);
+          document.querySelectorAll(`[data-cat="${cat}"]`).forEach((s, i) => {
+            s.textContent = i < val ? '★' : '☆';
+            s.classList.toggle('filled', i < val);
+          });
+          document.getElementById(`stars-${cat}`).dataset.val = val;
+        });
+      });
+      document.getElementById('rating-modal').classList.remove('hidden');
+    }
+
+    async function submitRating(ratedUserId) {
+      const punctuality = parseInt(document.getElementById('stars-punctuality').dataset.val);
+      const fairPlay = parseInt(document.getElementById('stars-fairPlay').dataset.val);
+      const attitude = parseInt(document.getElementById('stars-attitude').dataset.val);
+      const comment = document.getElementById('rating-comment').value.trim();
+      if (!punctuality || !fairPlay || !attitude) { toast.error('Completá todas las categorías.'); return; }
+      const res = await api.submitRating({ matchId, ratedUserId, punctuality, fairPlay, attitude, comment });
+      if (res.success) {
+        toast.success('¡Calificación enviada!');
+        document.getElementById('rating-modal').classList.add('hidden');
+        myRatedIds.push(ratedUserId);
+        await loadMatch();
+      } else toast.error(res.message);
+    }
+
+    loadMatch();
+  </script>
+</body>
+</html>

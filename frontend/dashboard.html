@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mis partidos — MatchPlay</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand">⚽ MATCH<span>PLAY</span></a>
+    <div id="navbar-links" class="navbar-links"></div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div id="navbar-avatar"></div>
+      <button class="navbar-mobile-toggle" id="mobile-toggle">☰</button>
+    </div>
+  </nav>
+
+  <div class="container" style="padding-top:40px;padding-bottom:60px;">
+    <div class="page-header">
+      <div class="flex-between">
+        <div>
+          <h1 class="page-title" id="dashboard-title">Mis <em>partidos</em></h1>
+          <p class="text-muted" id="dashboard-sub">Tu actividad en MatchPlay</p>
+        </div>
+        <a href="create-match.html" class="btn btn-primary">＋ Crear partido</a>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="grid-3 mb-32" id="stats-grid">
+      <div class="card" style="text-align:center;">
+        <div style="font-family:var(--font-display);font-size:52px;color:var(--accent);" id="stat-played">—</div>
+        <div class="text-muted">Partidos jugados</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-family:var(--font-display);font-size:52px;color:var(--accent);" id="stat-organized">—</div>
+        <div class="text-muted">Organizados</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-family:var(--font-display);font-size:52px;color:var(--accent);" id="stat-rating">—</div>
+        <div class="text-muted">Rating</div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" onclick="showDashTab('organized', event)">🎯 Organizados</button>
+      <button class="tab" onclick="showDashTab('joined', event)">⚽ Unidos</button>
+    </div>
+
+    <div id="tab-organized">
+      <div class="grid-matches" id="organized-grid">
+        <div class="empty-state"><div class="empty-icon">⏳</div><p>Cargando...</p></div>
+      </div>
+    </div>
+
+    <div id="tab-joined" style="display:none;">
+      <div class="grid-matches" id="joined-grid">
+        <div class="empty-state"><div class="empty-icon">⏳</div><p>Cargando...</p></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer"><div class="footer-brand">⚽ MATCHPLAY</div></footer>
+
+  <script src="js/api.js"></script>
+  <script>
+    if (!api.isLoggedIn()) window.location.href = 'login.html';
+
+    async function loadDashboard() {
+      const userRes = await api.me();
+      const user = userRes.user;
+      if (!user) { api.clearAuth(); window.location.href = 'login.html'; return; }
+
+      localStorage.setItem('mp_user', JSON.stringify(user));
+      document.getElementById('dashboard-title').innerHTML = `Hola, <em>${user.name.split(' ')[0]}</em>`;
+      document.getElementById('stat-played').textContent = user.matchesPlayed;
+      document.getElementById('stat-organized').textContent = user.matchesOrganized;
+      document.getElementById('stat-rating').textContent = user.rating?.average > 0 ? user.rating.average : '—';
+
+      // Load organized
+      const orgRes = await api.myOrganized();
+      renderMatches('organized-grid', orgRes.matches || [], '🎯 No organizaste ningún partido aún.', 'create-match.html', 'Crear partido');
+
+      // Load joined
+      const joinedRes = await api.myJoined();
+      renderMatches('joined-grid', joinedRes.matches || [], '⚽ No te uniste a ningún partido aún.', 'matches.html', 'Buscar partidos');
+    }
+
+    function renderMatches(gridId, matches, emptyMsg, emptyHref, emptyBtn) {
+      const grid = document.getElementById(gridId);
+      if (!matches.length) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">⚽</div><p class="text-muted">${emptyMsg}</p><a href="${emptyHref}" class="btn btn-outline mt-16">${emptyBtn}</a></div>`;
+        return;
+      }
+      grid.innerHTML = matches.map(m => {
+        const myEntry = m.players?.find(p => p.user?._id === api.getUser()?._id || p.user === api.getUser()?._id);
+        return `
+        <a href="match-detail.html?id=${m._id}" class="match-card">
+          <div class="match-card-header">
+            <div>
+              <div class="match-card-title">${m.title}</div>
+              <div style="display:flex;gap:6px;margin-top:6px;">${levelBadge(m.level)}<span class="badge" style="background:rgba(255,255,255,0.06);color:var(--text-muted);">${m.format}</span></div>
+            </div>
+            ${statusBadge(m.status)}
+          </div>
+          <div class="match-card-body">
+            <div class="match-card-row"><i class="fa fa-calendar"></i>${formatDate(m.date)}</div>
+            <div class="match-card-row"><i class="fa fa-map-marker-alt"></i>${m.location?.name}</div>
+            ${myEntry && myEntry.status !== 'confirmed' ? `<div class="match-card-row"><i class="fa fa-clock" style="color:var(--yellow);"></i><span style="color:var(--yellow);">Tu solicitud: ${myEntry.status === 'pending' ? 'Pendiente' : 'Rechazada'}</span></div>` : ''}
+            <div class="match-progress">
+              <div class="flex-between text-xs text-muted mb-8"><span>Jugadores</span><span>${m.confirmedCount ?? 0}/${m.totalPlayers}</span></div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100, ((m.confirmedCount ?? 0)/m.totalPlayers)*100)}%"></div></div>
+            </div>
+          </div>
+        </a>`;
+      }).join('');
+    }
+
+    function showDashTab(tab, e) {
+      document.getElementById('tab-organized').style.display = tab === 'organized' ? 'block' : 'none';
+      document.getElementById('tab-joined').style.display = tab === 'joined' ? 'block' : 'none';
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      e.target.classList.add('active');
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

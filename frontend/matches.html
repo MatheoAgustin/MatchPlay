@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Partidos — MatchPlay</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    .view-toggle { display:flex; gap:4px; }
+    .view-btn { background:var(--card); border:1px solid var(--border); color:var(--text-muted); padding:8px 12px; border-radius:var(--radius-sm); cursor:pointer; font-size:14px; transition:all 0.2s; }
+    .view-btn.active { background:var(--accent-glow); border-color:var(--accent); color:var(--accent); }
+    #map-view { height: 500px; border-radius: var(--radius); overflow:hidden; border:1px solid var(--border); display:none; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand">⚽ MATCH<span>PLAY</span></a>
+    <div id="navbar-links" class="navbar-links"></div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div id="navbar-avatar" style="display:none;"></div>
+      <button class="navbar-mobile-toggle" id="mobile-toggle">☰</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header">
+      <div class="flex-between">
+        <div>
+          <h1 class="page-title">Partidos <em>disponibles</em></h1>
+          <p class="text-muted">Encontrá tu próximo partido</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="view-toggle">
+            <button class="view-btn active" id="list-btn" onclick="setView('list')">☰ Lista</button>
+            <button class="view-btn" id="map-btn" onclick="setView('map')">🗺️ Mapa</button>
+          </div>
+          <a href="create-match.html" class="btn btn-primary btn-sm">＋ Crear partido</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- FILTERS -->
+    <div class="filters-bar">
+      <div class="filter-group">
+        <label class="filter-label">Nivel</label>
+        <select id="f-level" class="form-select">
+          <option value="">Todos</option>
+          <option value="Amateur">Amateur</option>
+          <option value="Intermedio">Intermedio</option>
+          <option value="Competitivo">Competitivo</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Formato</label>
+        <select id="f-format" class="form-select">
+          <option value="">Todos</option>
+          <option value="5v5">5v5</option>
+          <option value="7v7">7v7</option>
+          <option value="11v11">11v11</option>
+          <option value="Libre">Libre</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Fecha</label>
+        <input type="date" id="f-date" class="form-input">
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Estado</label>
+        <select id="f-status" class="form-select">
+          <option value="">Abiertos</option>
+          <option value="open">Solo abiertos</option>
+          <option value="full">Completos</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="loadMatches()" style="align-self:flex-end;">Buscar</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearFilters()" style="align-self:flex-end;">Limpiar</button>
+    </div>
+
+    <!-- MAP VIEW -->
+    <div id="map-view"></div>
+
+    <!-- LIST VIEW -->
+    <div id="list-view">
+      <div id="matches-count" class="text-muted text-sm mb-16"></div>
+      <div class="grid-matches" id="matches-grid">
+        <div class="empty-state"><div class="empty-icon">⏳</div><p>Cargando partidos...</p></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer"><div class="footer-brand">⚽ MATCHPLAY</div></footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="js/api.js"></script>
+  <script>
+    let map, allMatches = [], currentView = 'list';
+
+    function setView(v) {
+      currentView = v;
+      document.getElementById('list-view').style.display = v === 'list' ? 'block' : 'none';
+      document.getElementById('map-view').style.display = v === 'map' ? 'block' : 'none';
+      document.getElementById('list-btn').classList.toggle('active', v === 'list');
+      document.getElementById('map-btn').classList.toggle('active', v === 'map');
+      if (v === 'map') initMap();
+    }
+
+    function initMap() {
+      if (map) { renderMapMarkers(); return; }
+      map = L.map('map-view').setView([-34.6, -58.4], 11);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© OpenStreetMap © CARTO', maxZoom: 19
+      }).addTo(map);
+      renderMapMarkers();
+    }
+
+    function renderMapMarkers() {
+      if (!map) return;
+      allMatches.forEach(m => {
+        if (!m.location?.lat || !m.location?.lng) return;
+        const icon = L.divIcon({
+          html: `<div style="background:var(--accent);color:#050c05;font-weight:700;font-size:11px;padding:4px 8px;border-radius:6px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,230,118,0.4);">${m.format} · ${m.confirmedCount ?? 0}/${m.totalPlayers}</div>`,
+          className: '', iconAnchor: [30, 20]
+        });
+        L.marker([m.location.lat, m.location.lng], { icon })
+          .addTo(map)
+          .bindPopup(`<div style="font-family:DM Sans,sans-serif;min-width:200px;">
+            <strong>${m.title}</strong><br>
+            📅 ${formatDate(m.date)}<br>
+            📍 ${m.location.name}<br>
+            <a href="match-detail.html?id=${m._id}" style="color:#00e676;">Ver partido →</a>
+          </div>`);
+      });
+    }
+
+    async function loadMatches() {
+      const grid = document.getElementById('matches-grid');
+      grid.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Cargando...</p></div>';
+
+      const filters = {};
+      const level = document.getElementById('f-level').value;
+      const format = document.getElementById('f-format').value;
+      const date = document.getElementById('f-date').value;
+      const status = document.getElementById('f-status').value;
+      if (level) filters.level = level;
+      if (format) filters.format = format;
+      if (date) filters.date = date;
+      if (status) filters.status = status;
+
+      const res = await api.getMatches(filters);
+      if (!res.success) { grid.innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div><p>Error al cargar partidos.</p></div>'; return; }
+
+      allMatches = res.matches || [];
+      document.getElementById('matches-count').textContent = `${allMatches.length} partido${allMatches.length !== 1 ? 's' : ''} encontrado${allMatches.length !== 1 ? 's' : ''}`;
+
+      if (!allMatches.length) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">⚽</div><p class="empty-title">Sin partidos</p><p class="text-muted">No hay partidos con esos filtros.</p><a href="create-match.html" class="btn btn-primary mt-16">Crear el primero</a></div>';
+        return;
+      }
+
+      grid.innerHTML = allMatches.map(m => `
+        <a href="match-detail.html?id=${m._id}" class="match-card">
+          <div class="match-card-header">
+            <div>
+              <div class="match-card-title">${m.title}</div>
+              <div style="display:flex;gap:6px;margin-top:6px;">${levelBadge(m.level)} <span class="badge" style="background:rgba(255,255,255,0.06);color:var(--text-muted);">${m.format}</span></div>
+            </div>
+            ${statusBadge(m.status)}
+          </div>
+          <div class="match-card-body">
+            <div class="match-card-row"><i class="fa fa-calendar"></i>${formatDate(m.date)}</div>
+            <div class="match-card-row"><i class="fa fa-map-marker-alt"></i>${m.location.name}</div>
+            <div class="match-card-row">
+              ${avatarHtml(m.organizer?.avatar, m.organizer?.name || '?', 22)}
+              <span class="text-sm">${m.organizer?.name}</span>
+              ${m.organizer?.rating?.average > 0 ? `<span class="text-accent text-xs">⭐ ${m.organizer.rating.average}</span>` : ''}
+            </div>
+            <div class="match-progress">
+              <div class="flex-between text-xs text-muted mb-8">
+                <span>Jugadores confirmados</span>
+                <span><strong style="color:var(--accent)">${m.confirmedCount ?? 0}</strong>/${m.totalPlayers}</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100, ((m.confirmedCount ?? 0)/m.totalPlayers)*100)}%"></div></div>
+            </div>
+            ${m.costPerPerson > 0 ? `<div class="match-card-row"><i class="fa fa-dollar-sign"></i>$${m.costPerPerson} por persona</div>` : '<div class="match-card-row text-accent text-sm"><i class="fa fa-check"></i>Gratis</div>'}
+          </div>
+        </a>
+      `).join('');
+
+      if (currentView === 'map') renderMapMarkers();
+    }
+
+    function clearFilters() {
+      document.getElementById('f-level').value = '';
+      document.getElementById('f-format').value = '';
+      document.getElementById('f-date').value = '';
+      document.getElementById('f-status').value = '';
+      loadMatches();
+    }
+
+    loadMatches();
+  </script>
+</body>
+</html>

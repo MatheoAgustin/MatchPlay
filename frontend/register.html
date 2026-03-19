@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrarse — MatchPlay</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card">
+      <a href="index.html" class="auth-logo">⚽ MATCHPLAY</a>
+      <h1 class="auth-title">Creá tu cuenta</h1>
+      <p class="auth-sub">Unite a la comunidad del fútbol social</p>
+
+      <div class="auth-form">
+        <div class="form-group">
+          <label class="form-label">Nombre completo</label>
+          <input type="text" id="name" class="form-input" placeholder="Tu nombre" autocomplete="name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" id="email" class="form-input" placeholder="tu@email.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contraseña</label>
+          <input type="password" id="password" class="form-input" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+        </div>
+        <div class="grid-2" style="gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Posición</label>
+            <select id="position" class="form-select">
+              <option value="Indiferente">Indiferente</option>
+              <option value="Arquero">Arquero</option>
+              <option value="Defensor">Defensor</option>
+              <option value="Mediocampista">Mediocampista</option>
+              <option value="Delantero">Delantero</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nivel</label>
+            <select id="level" class="form-select">
+              <option value="Amateur">Amateur</option>
+              <option value="Intermedio">Intermedio</option>
+              <option value="Competitivo">Competitivo</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">WhatsApp (opcional)</label>
+          <input type="tel" id="phone" class="form-input" placeholder="+5491155555555">
+          <span class="form-hint">Para recibir notificaciones de partidos</span>
+        </div>
+        <p id="error-msg" class="form-error hidden"></p>
+        <button class="btn btn-primary btn-full" id="register-btn">Crear cuenta ⚽</button>
+      </div>
+
+      <div class="auth-footer">
+        ¿Ya tenés cuenta? <a href="login.html">Iniciar sesión</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    if (api.isLoggedIn()) window.location.href = 'dashboard.html';
+
+    document.getElementById('register-btn').addEventListener('click', async () => {
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const position = document.getElementById('position').value;
+      const level = document.getElementById('level').value;
+      const phone = document.getElementById('phone').value.trim();
+      const errEl = document.getElementById('error-msg');
+      const btn = document.getElementById('register-btn');
+      errEl.classList.add('hidden');
+
+      if (!name || !email || !password) { errEl.textContent = 'Completá nombre, email y contraseña.'; errEl.classList.remove('hidden'); return; }
+      if (password.length < 6) { errEl.textContent = 'La contraseña debe tener al menos 6 caracteres.'; errEl.classList.remove('hidden'); return; }
+
+      btn.disabled = true; btn.textContent = 'Creando cuenta...';
+      const res = await api.register({ name, email, password, position, level, phone: phone || undefined });
+      btn.disabled = false; btn.textContent = 'Crear cuenta ⚽';
+
+      if (res.success) {
+        api.setAuth(res.token, res.refreshToken, res.user);
+        toast.success('¡Cuenta creada! Revisá tu email para verificarla.');
+        setTimeout(() => window.location.href = 'dashboard.html', 1500);
+      } else {
+        const msg = res.errors?.[0]?.msg || res.message || 'Error al registrarse.';
+        errEl.textContent = msg;
+        errEl.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>

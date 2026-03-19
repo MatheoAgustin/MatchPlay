@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar sesión — MatchPlay</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="theme-dark">
+  <div class="auth-page">
+    <div class="auth-card">
+      <a href="index.html" class="auth-logo">⚽ MATCHPLAY</a>
+      <h1 class="auth-title">Bienvenido de nuevo</h1>
+      <p class="auth-sub">Iniciá sesión para encontrar tu próximo partido</p>
+
+      <div class="auth-form" id="login-form">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" id="email" class="form-input" placeholder="tu@email.com" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contraseña</label>
+          <input type="password" id="password" class="form-input" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <p id="error-msg" class="form-error hidden"></p>
+        <button class="btn btn-primary btn-full" id="login-btn">Iniciar sesión</button>
+      </div>
+
+      <div class="auth-footer">
+        ¿No tenés cuenta? <a href="register.html">Registrate gratis</a>
+    </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script>
+    if (api.isLoggedIn()) window.location.href = 'dashboard.html';
+
+    document.getElementById('login-btn').addEventListener('click', async () => {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const errEl = document.getElementById('error-msg');
+      const btn = document.getElementById('login-btn');
+      errEl.classList.add('hidden');
+
+      if (!email || !password) { errEl.textContent = 'Completá todos los campos.'; errEl.classList.remove('hidden'); return; }
+
+      btn.disabled = true; btn.textContent = 'Ingresando...';
+      const res = await api.login({ email, password });
+      btn.disabled = false; btn.textContent = 'Iniciar sesión';
+
+      if (res.success) {
+        api.setAuth(res.token, res.refreshToken, res.user);
+        window.location.href = 'dashboard.html';
+      } else {
+        errEl.textContent = res.message || 'Error al iniciar sesión.';
+        errEl.classList.remove('hidden');
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('login-btn').click();
+    });
+  </script>
+</body>
+</html>

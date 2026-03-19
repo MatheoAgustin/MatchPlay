@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Explorar partidos - MatchPlay</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    .explore-header { padding: 40px 0 24px; }
+    .filters-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+      margin-bottom: 24px;
+    }
+    .filters-bar .form-control { width: auto; min-width: 140px; }
+    .view-toggle {
+      display: flex; gap: 4px;
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 3px;
+    }
+    .view-toggle-btn {
+      padding: 6px 14px;
+      border: none; border-radius: 6px;
+      font-size: 13px; font-weight: 600;
+      color: var(--text-muted);
+      background: none; transition: var(--transition);
+    }
+    .view-toggle-btn.active { background: var(--bg-card); color: var(--text-primary); }
+    #map-container {
+      height: 480px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    #map { height: 100%; }
+    .leaflet-popup-content-wrapper {
+      background: var(--bg-card2) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--text-primary) !important;
+      border-radius: 10px !important;
+    }
+    .leaflet-popup-tip { background: var(--bg-card2) !important; }
+    .map-popup-title { font-weight: 700; margin-bottom: 4px; }
+    .map-popup-info { font-size: 12px; color: var(--text-sec); }
+    .map-popup-btn {
+      display: inline-block; margin-top: 8px;
+      background: var(--green); color: #000;
+      padding: 4px 12px; border-radius: 6px;
+      font-size: 12px; font-weight: 700;
+    }
+    .pagination {
+      display: flex; gap: 6px; justify-content: center; margin-top: 32px;
+    }
+    .page-btn {
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: var(--radius-sm);
+      font-size: 14px; font-weight: 600;
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-sec); transition: var(--transition);
+    }
+    .page-btn:hover, .page-btn.active { background: var(--green); color: #000; border-color: var(--green); }
+  </style>
+</head>
+<body>
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="../index.html" class="navbar-brand">MATCH<span>PLAY</span> ⚽</a>
+  <ul class="navbar-nav">
+    <li><a href="explore.html" class="active">Explorar</a></li>
+    <li><a href="pages/dashboard.html">Mi dashboard</a></li>
+  </ul>
+  <div class="navbar-actions" id="auth-buttons">
+    <a href="login.html" class="btn btn-secondary btn-sm">Iniciar sesión</a>
+    <a href="register.html" class="btn btn-primary btn-sm">Registrarse</a>
+  </div>
+  <div class="navbar-actions" id="user-menu" style="display:none">
+    <a href="pages/create-match.html" class="btn btn-primary btn-sm">+ Crear partido</a>
+    <button class="notif-btn" onclick="window.location.href='pages/notifications.html'">
+      🔔 <span class="notif-badge">0</span>
+    </button>
+    <div class="dropdown">
+      <img src="" class="nav-avatar" id="nav-avatar" onclick="toggleDropdown()" onerror="this.style.display='none'">
+      <div class="dropdown-menu" id="user-dropdown">
+        <a href="pages/dashboard.html" class="dropdown-item">📊 Mi dashboard</a>
+        <button class="dropdown-item danger" onclick="Auth.logout()">🚪 Cerrar sesión</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+  <div class="container">
+    <div class="explore-header">
+      <div class="flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <h1 class="section-title display">PARTIDOS <span class="text-green">DISPONIBLES</span></h1>
+          <p class="section-subtitle" id="results-count">Cargando...</p>
+        </div>
+        <div class="flex gap-3 items-center">
+          <div class="view-toggle">
+            <button class="view-toggle-btn active" id="grid-view-btn" onclick="setView('grid')">⊞ Lista</button>
+            <button class="view-toggle-btn" id="map-view-btn" onclick="setView('map')">🗺️ Mapa</button>
+          </div>
+          <a href="pages/create-match.html" class="btn btn-primary">+ Crear partido</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-bar">
+      <input type="text" class="form-control" id="filter-city" placeholder="🏙️ Ciudad">
+      <select class="form-control" id="filter-level">
+        <option value="">Todos los niveles</option>
+        <option value="amateur">🌱 Amateur</option>
+        <option value="intermedio">⚡ Intermedio</option>
+        <option value="competitivo">🔥 Competitivo</option>
+      </select>
+      <select class="form-control" id="filter-format">
+        <option value="">Todos los formatos</option>
+        <option value="5v5">5v5</option>
+        <option value="7v7">7v7</option>
+        <option value="11v11">11v11</option>
+      </select>
+      <input type="date" class="form-control" id="filter-date">
+      <button class="btn btn-primary btn-sm" onclick="loadMatches()">Buscar</button>
+      <button class="btn btn-secondary btn-sm" onclick="clearFilters()">Limpiar</button>
+    </div>
+
+    <!-- Map view -->
+    <div id="map-container" style="display:none">
+      <div id="map"></div>
+    </div>
+
+    <!-- Grid view -->
+    <div id="grid-view">
+      <div class="matches-grid" id="matches-grid">
+        <div class="loading-container" style="grid-column:1/-1">
+          <div class="spinner spinner-lg"></div>
+          <span>Cargando partidos...</span>
+        </div>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+</main>
+
+<script src="js/api.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let currentPage = 1;
+let currentView = 'grid';
+let map = null;
+
+function setView(view) {
+  currentView = view;
+  document.getElementById('grid-view').style.display = view === 'grid' ? 'block' : 'none';
+  document.getElementById('map-container').style.display = view === 'map' ? 'block' : 'none';
+  document.getElementById('grid-view-btn').classList.toggle('active', view === 'grid');
+  document.getElementById('map-view-btn').classList.toggle('active', view === 'map');
+
+  if (view === 'map' && !map) initMap();
+  if (view === 'map') loadMapMatches();
+}
+
+function clearFilters() {
+  document.getElementById('filter-city').value = '';
+  document.getElementById('filter-level').value = '';
+  document.getElementById('filter-format').value = '';
+  document.getElementById('filter-date').value = '';
+  loadMatches(1);
+}
+
+function getFilters() {
+  return {
+    city: document.getElementById('filter-city').value.trim(),
+    level: document.getElementById('filter-level').value,
+    format: document.getElementById('filter-format').value,
+    date: document.getElementById('filter-date').value,
+    status: 'abierto',
+    page: currentPage, limit: 12
+  };
+}
+
+async function loadMatches(page = 1) {
+  currentPage = page;
+  const grid = document.getElementById('matches-grid');
+  grid.innerHTML = '<div class="loading-container" style="grid-column:1/-1"><div class="spinner spinner-lg"></div><span>Cargando...</span></div>';
+
+  const filters = getFilters();
+  Object.keys(filters).forEach(k => !filters[k] && delete filters[k]);
+
+  const res = await api.matches.list(filters);
+
+  if (!res?.ok) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">❌</div><div class="empty-state-title">Error al cargar</div></div>';
+    return;
+  }
+
+  const { matches, total, pages } = res.data;
+  document.getElementById('results-count').textContent = `${total} partido${total !== 1 ? 's' : ''} encontrado${total !== 1 ? 's' : ''}`;
+
+  if (!matches.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-state-icon">⚽</div>
+      <div class="empty-state-title">No hay partidos disponibles</div>
+      <div class="empty-state-text">Intentá cambiar los filtros o <a href="pages/create-match.html" class="text-green">creá el tuyo propio</a></div>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = matches.map(m => matchCardHtml(m)).join('');
+
+  // Pagination
+  const pag = document.getElementById('pagination');
+  pag.innerHTML = '';
+  for (let i = 1; i <= pages; i++) {
+    pag.innerHTML += `<button class="page-btn ${i === page ? 'active' : ''}" onclick="loadMatches(${i})">${i}</button>`;
+  }
+}
+
+function matchCardHtml(m) {
+  const confirmed = Utils.confirmedCount(m);
+  const percent = Math.min(100, Math.round((confirmed / m.totalPlayers) * 100));
+  const d = new Date(m.date);
+  const levelMap = { amateur: '🌱', intermedio: '⚡', competitivo: '🔥', todos: '👥' };
+
+  return `
+    <div class="match-card" onclick="window.location.href='pages/match-detail.html?id=${m._id}'">
+      <div class="match-card-header">
+        <div>
+          <div class="match-title">${Utils.escapeHtml(m.title)}</div>
+          <div style="margin-top:4px">${Utils.statusBadge(m.status)}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="badge badge-gray">${m.format}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">${levelMap[m.level] || ''} ${m.level}</div>
+        </div>
+      </div>
+      <div class="match-card-body">
+        <div class="match-meta">
+          <div class="match-meta-item">
+            📅 <span>${Utils.formatDateShort(d)} a las ${Utils.formatTime(d)}</span>
+          </div>
+          <div class="match-meta-item">
+            📍 <span>${Utils.escapeHtml(m.venue.name)} · ${Utils.escapeHtml(m.venue.city)}</span>
+          </div>
+          ${m.costPerPlayer > 0 ? `<div class="match-meta-item">💰 <span>${m.costPerPlayer} ${m.currency} por persona</span></div>` : '<div class="match-meta-item">✅ <span>Gratis</span></div>'}
+        </div>
+        <div class="players-bar"><div class="players-bar-fill" style="width:${percent}%"></div></div>
+        <div class="players-count">${confirmed}/${m.totalPlayers} jugadores</div>
+      </div>
+      <div class="match-card-footer">
+        <div class="flex items-center gap-2">
+          ${Utils.avatarHtml(m.organizer, 'sm')}
+          <span style="font-size:13px;color:var(--text-sec)">${Utils.escapeHtml(m.organizer.name)}</span>
+        </div>
+        <span class="btn btn-outline btn-sm">Ver partido →</span>
+      </div>
+    </div>
+  `;
+}
+
+// MAP
+function initMap() {
+  map = L.map('map').setView([-34.9, -56.17], 13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO',
+    maxZoom: 19
+  }).addTo(map);
+}
+
+async function loadMapMatches() {
+  if (!map) return;
+  const res = await api.matches.map();
+  if (!res?.ok) return;
+
+  const greenIcon = L.divIcon({
+    html: '<div style="background:#00E676;width:14px;height:14px;border-radius:50%;border:2px solid #000;box-shadow:0 0 8px rgba(0,230,118,0.8)"></div>',
+    className: '', iconSize: [14, 14], iconAnchor: [7, 7]
+  });
+
+  res.data.matches.forEach(m => {
+    if (!m.venue?.coordinates?.lat) return;
+    const confirmed = Utils.confirmedCount(m);
+    L.marker([m.venue.coordinates.lat, m.venue.coordinates.lng], { icon: greenIcon })
+      .addTo(map)
+      .bindPopup(`
+        <div class="map-popup-title">${m.title}</div>
+        <div class="map-popup-info">📅 ${Utils.formatDateShort(m.date)} · ${m.format}</div>
+        <div class="map-popup-info">👥 ${confirmed}/${m.totalPlayers} jugadores</div>
+        <a href="pages/match-detail.html?id=${m._id}" class="map-popup-btn">Ver partido →</a>
+      `);
+  });
+}
+
+function toggleDropdown() {
+  document.getElementById('user-dropdown').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.dropdown')) document.getElementById('user-dropdown')?.classList.remove('open');
+});
+
+// Init
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('tab') === 'map') setView('map');
+loadMatches();
+</script>
+</body>
+</html>
